@@ -12,6 +12,11 @@ runs:
   steps:
     - name: Checkout
       uses: actions/checkout@v3
+      
+    - name: Check Fs
+      shell: bash
+      run: |
+        ls
 
     - name: Generate SDK
       uses: openapi-generators/openapitools-generator-action@v1
