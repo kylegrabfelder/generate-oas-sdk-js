@@ -22,6 +22,7 @@ runs:
         command-args: --invoker-package ${{ inputs.service-name }}
 
     - name: Check Output
+      shell: bash
       run: |
         ls
         cd javascript-client
