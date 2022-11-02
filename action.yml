@@ -13,15 +13,15 @@ runs:
     - name: Check Fs
       shell: bash
       run: |
+        echo "-----"
         ls
+        echo "-----"
         cd ${{ github.action_path }}
         ls
-        cd ..
+        echo "-----"
+        cd ${{ github.workspace }}
         ls
-        cd ..
-        ls
-        cd ..
-        ls
+        echo "-----"
 
     - name: Generate SDK
       uses: openapi-generators/openapitools-generator-action@v1
