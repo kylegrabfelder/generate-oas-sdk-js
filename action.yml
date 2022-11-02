@@ -9,10 +9,7 @@ inputs:
     required: true
 runs:
   using: "composite"
-  steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      
+  steps:      
     - name: Check Fs
       shell: bash
       run: |
@@ -23,7 +20,7 @@ runs:
       with:
         generator: javascript
         openapi-file: ${{ inputs.openapi-path }}
-        config-file: config.yaml
+        config-file: ${{ github.action_path }}/config.yaml
         command-args: --invoker-package ${{ inputs.service-name }}
 
     - name: Check Output
