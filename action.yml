@@ -14,15 +14,15 @@ runs:
       shell: bash
       run: |
         cd ${{ github.action_path }}
-        mkdir ${{ github.workspace }}/../generator-config
-        cp -r * ${{ github.workspace }}/../generator-config
+        mkdir ${{ github.workspace }}/oas-generator-config
+        cp -r * ${{ github.workspace }}/oas-generator-config
 
     - name: Generate SDK
       uses: openapi-generators/openapitools-generator-action@v1
       with:
         generator: javascript
         openapi-file: ${{ inputs.openapi-path }}
-        config-file: ../generator-config/config.yaml
+        config-file: oas-generator-config/config.yaml
         command-args: --invoker-package ${{ inputs.service-name }}
 
     - name: Check Output
