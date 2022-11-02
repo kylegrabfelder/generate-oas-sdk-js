@@ -13,15 +13,22 @@ runs:
     - name: Check Fs
       shell: bash
       run: |
-        echo "-----"
+        echo "----- Root -----"
+        echo $PWD
         ls
-        echo "-----"
+        echo "----- Action Path -----"
         cd ${{ github.action_path }}
+        echo $PWD
         ls
-        echo "-----"
+        echo "----- Workspace Path -----"
         cd ${{ github.workspace }}
+        echo $PWD
         ls
-        echo "-----"
+        echo "----- Workspace Parent Path -----"
+        cd ..
+        echo $PWD
+        ls
+        echo "----- END ----- "
 
     - name: Generate SDK
       uses: openapi-generators/openapitools-generator-action@v1
