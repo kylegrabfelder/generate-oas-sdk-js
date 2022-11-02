@@ -27,3 +27,6 @@ runs:
         ls
         cd javascript-client
         ls
+branding:
+  icon: activity
+  color: green
