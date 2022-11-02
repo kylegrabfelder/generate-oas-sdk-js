@@ -15,6 +15,7 @@ runs:
       run: |
         echo "-----"
         echo $GITHUB_WORKSPACE
+        echo ${{ github.workspace }}
         cd ${{ github.action_path }}
         mkdir ${{ github.workspace }}/oas-generator-config
         cp -r * ${{ github.workspace }}/oas-generator-config
@@ -23,6 +24,9 @@ runs:
         ls
         echo "-----"
         cd oas-generator-config
+        ls
+        echo "-----"
+        cd custom_templates
         ls
         echo "-----"
 
