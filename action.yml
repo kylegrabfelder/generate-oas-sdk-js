@@ -19,8 +19,7 @@ runs:
         generator: javascript
         openapi-file: ${{ inputs.openapi-path }}
         config-file: $GITHUB_ACTION_PATH/config.yaml
-        command-args:
-          invokerPackage: ${{ inputs.service-name }}
+        command-args: --invoker-package ${{ inputs.service-name }}
 
     - name: Check Output
       run: |
