@@ -13,18 +13,15 @@ runs:
     - name: Check Fs
       shell: bash
       run: |
-        echo "----- Root -----"
-        echo $PWD
-        ls
-        echo "----- Action Path -----"
-        cd ${{ github.action_path }}
-        echo $PWD
-        ls
         echo "----- Workspace Path -----"
         cd ${{ github.workspace }}
         echo $PWD
         ls
         echo "----- Workspace Parent Path -----"
+        cd ..
+        echo $PWD
+        ls
+        echo "----- Workspace Parent Parent Path -----"
         cd ..
         echo $PWD
         ls
