@@ -1,0 +1,11 @@
+templateDir: custom-templates
+additionalProperties:
+  usePromises: true
+files:
+  api.mustache:
+    templateType: API
+    destinationFilename: .js
+  ApiClient.mustache:
+    templateType: API
+  index.mustache:
+    templateType: API

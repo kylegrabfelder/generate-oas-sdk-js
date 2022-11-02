@@ -1,0 +1,29 @@
+name: 'Generate SDK from Open API Specification - Javascript'
+description: 'Parses the provided Open API Specification and generates a Javascript SDK'
+inputs:
+  openapi-path:
+    description: 'Path to the Open API Specification'
+    required: true
+  service-name:
+    description: 'Unique name of the service the SDK supports'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Generate SDK
+      uses: openapi-generators/openapitools-generator-action@v1
+      with:
+        generator: javascript
+        openapi-file: ${{ input.openapi-path }}
+        config-file: $GITHUB_ACTION_PATH/config.yaml
+        command-args:
+          invokerPackage: ${{ inputs.service-name }}
+
+    - name: Check Output
+      run: |
+        ls
+        cd javascript-client
+        ls
