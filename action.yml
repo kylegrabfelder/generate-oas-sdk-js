@@ -13,9 +13,18 @@ runs:
     - name: Copy Configuration to Workspace
       shell: bash
       run: |
+        echo "-----"
+        echo $GITHUB_WORKSPACE
         cd ${{ github.action_path }}
         mkdir ${{ github.workspace }}/oas-generator-config
         cp -r * ${{ github.workspace }}/oas-generator-config
+        echo "-----"
+        cd ${{ github.workspace }}
+        ls
+        echo "-----"
+        cd oas-generator-config
+        ls
+        echo "-----"
 
     - name: Generate SDK
       uses: openapi-generators/openapitools-generator-action@v1
