@@ -10,29 +10,19 @@ inputs:
 runs:
   using: "composite"
   steps:      
-    - name: Check Fs
+    - name: Copy Configuration to Workspace
       shell: bash
       run: |
-        echo "----- Workspace Path -----"
-        cd ${{ github.workspace }}
-        echo $PWD
-        ls
-        echo "----- Workspace Parent Path -----"
-        cd ..
-        echo $PWD
-        ls
-        echo "----- Workspace Parent Parent Path -----"
-        cd ..
-        echo $PWD
-        ls
-        echo "----- END ----- "
+        cd ${{ github.action_path }}
+        mkdir ${{ github.workspace }}/../generator-config
+        cp * ${{ github.workspace }}/../generator-config
 
     - name: Generate SDK
       uses: openapi-generators/openapitools-generator-action@v1
       with:
         generator: javascript
         openapi-file: ${{ inputs.openapi-path }}
-        config-file: ${{ github.action_path }}/config.yaml
+        config-file: ../generator-config/config.yaml
         command-args: --invoker-package ${{ inputs.service-name }}
 
     - name: Check Output
