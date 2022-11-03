@@ -24,7 +24,7 @@ runs:
         openapi-file: ${{ inputs.openapi-path }}
         config-file: oas-generator-config/config.yaml
         template-dir: oas-generator-config/custom_templates
-        command-args: --invoker-package ${{ inputs.service-name }}
+        command-args: --invoker-package ${{ inputs.service-name }} -o /sdk/js
 
     - name: Check Output
       shell: bash
