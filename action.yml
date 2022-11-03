@@ -16,7 +16,6 @@ runs:
         cd ${{ github.action_path }}
         mkdir -p ${{ github.workspace }}/oas-generator-config
         cp -r * ${{ github.workspace }}/oas-generator-config
-        mkdir -p ${{ github.workspace }}/sdk
 
     - name: Generate SDK
       uses: openapi-generators/openapitools-generator-action@v1.3.0
@@ -25,7 +24,7 @@ runs:
         openapi-file: ${{ inputs.openapi-path }}
         config-file: oas-generator-config/config.yaml
         template-dir: oas-generator-config/custom_templates
-        command-args: --invoker-package ${{ inputs.service-name }} -o /sdk/js
+        command-args: --invoker-package ${{ inputs.service-name }} -o ${{ github.workspace }}/sdk/js
 
     - name: Check Output
       shell: bash
