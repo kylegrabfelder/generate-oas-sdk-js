@@ -24,15 +24,18 @@ runs:
         openapi-file: ${{ inputs.openapi-path }}
         config-file: oas-generator-config/config.yaml
         template-dir: oas-generator-config/custom_templates
-        command-args: --invoker-package ${{ inputs.service-name }} -o ${{ github.workspace }}/sdk/js
+        command-args: --invoker-package ${{ inputs.service-name }} -o /github/workspace/sdk/js
 
     - name: Check Output
       shell: bash
       run: |
         echo "----- Root -----"
         ls
-        cd javascript-client
-        echo "----- Client Directory -----"
+        cd sdk
+        echo "----- SDK Directory -----"
+        ls
+        cd js
+        echo "----- JS Directory -----"
         ls
         echo "-----"
 branding:
