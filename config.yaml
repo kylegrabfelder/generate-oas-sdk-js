@@ -1,4 +1,3 @@
-templateDir: oas-generator-config/custom-templates
 additionalProperties:
   usePromises: true
 files:
