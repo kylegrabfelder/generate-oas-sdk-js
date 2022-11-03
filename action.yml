@@ -31,7 +31,7 @@ runs:
         echo "-----"
 
     - name: Generate SDK
-      uses: openapi-generators/openapitools-generator-action@v1
+      uses: openapi-generators/openapitools-generator-action@v1.3.0
       with:
         generator: javascript
         openapi-file: ${{ inputs.openapi-path }}
