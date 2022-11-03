@@ -13,22 +13,9 @@ runs:
     - name: Copy Configuration to Workspace
       shell: bash
       run: |
-        echo "-----"
-        echo $GITHUB_WORKSPACE
-        echo ${{ github.workspace }}
         cd ${{ github.action_path }}
         mkdir ${{ github.workspace }}/oas-generator-config
         cp -r * ${{ github.workspace }}/oas-generator-config
-        echo "-----"
-        cd ${{ github.workspace }}
-        ls
-        echo "-----"
-        cd oas-generator-config
-        ls
-        echo "-----"
-        cd custom_templates
-        ls
-        echo "-----"
 
     - name: Generate SDK
       uses: openapi-generators/openapitools-generator-action@v1.3.0
@@ -42,9 +29,12 @@ runs:
     - name: Check Output
       shell: bash
       run: |
+        echo "----- Root -----"
         ls
         cd javascript-client
+        echo "----- Client Directory -----"
         ls
+        echo "-----"
 branding:
   icon: activity
   color: green
