@@ -36,7 +36,7 @@ runs:
         generator: javascript
         openapi-file: ${{ inputs.openapi-path }}
         config-file: oas-generator-config/config.yaml
-        template-dir: oas-generator-config/custom-templates
+        template-dir: oas-generator-config/custom_templates
         command-args: --invoker-package ${{ inputs.service-name }}
 
     - name: Check Output
