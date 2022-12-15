@@ -7,6 +7,9 @@ inputs:
   service-name:
     description: 'Unique name of the service the SDK supports'
     required: true
+  package-scope:
+    description: 'NPM Package Scope'
+    required: true
 runs:
   using: "composite"
   steps:      
