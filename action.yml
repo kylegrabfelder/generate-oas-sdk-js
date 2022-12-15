@@ -34,8 +34,6 @@ runs:
       shell: bash
       run: |
         cd sdk/js
-        ls
-        cat package.json
         npm install
 
 branding:
