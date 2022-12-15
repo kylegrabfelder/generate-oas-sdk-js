@@ -8,3 +8,5 @@ files:
     templateType: API
   index.mustache:
     templateType: API
+  package.mustache:
+    templateType: SupportingFiles

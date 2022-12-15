@@ -25,20 +25,13 @@ runs:
         openapi-file: ${{ inputs.openapi-path }}
         config-file: sdk/config.yaml
         template-dir: sdk/custom_templates
-        command-args: --invoker-package ${{ inputs.service-name }} -o /github/workspace/sdk/js
+        command-args: --invoker-package ${{ inputs.service-name }} -o /github/workspace/sdk/js --additional-properties="packageScope=${{ inputs.package-scope }}
 
-    - name: Check Output
-      shell: bash
+    - name: Build SDK
       run: |
-        echo "----- Root -----"
-        ls
-        cd sdk
-        echo "----- SDK Directory -----"
-        ls
-        cd js
-        echo "----- JS Directory -----"
-        ls
-        echo "-----"
+        cd sdk/js
+        npm install
+
 branding:
   icon: activity
   color: green
