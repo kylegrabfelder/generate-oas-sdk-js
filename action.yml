@@ -28,6 +28,7 @@ runs:
         command-args: --invoker-package ${{ inputs.service-name }} -o /github/workspace/sdk/js --additional-properties="packageScope=${{ inputs.package-scope }}
 
     - name: Build SDK
+      shell: bash
       run: |
         cd sdk/js
         npm install
