@@ -33,8 +33,8 @@ runs:
     - name: Build SDK
       shell: bash
       run: |
-        ls
         cd sdk/js
+        ls
         npm install
 
 branding:
