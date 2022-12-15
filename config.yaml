@@ -10,4 +10,4 @@ files:
     templateType: API
   package.mustache:
     templateType: SupportingFiles
-    destinationFilename: .json
+    destinationFilename: package.json
