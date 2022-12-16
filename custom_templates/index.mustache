@@ -1,8 +1,8 @@
 {{>licenseInfo}}
 
-import {{invokerPackage}}ApiClient from './ApiClient';
+import {{namespace}}ApiClient from './ApiClient';
 {{#models}}import {{#model}}{{classFilename}}{{/model}} from './{{#modelPackage}}{{.}}/{{/modelPackage}}{{importPath}}';
-{{/models}}{{#apiInfo}}{{#apis}}import {{invokerPackage}}{{importPath}} from './{{#apiPackage}}{{.}}/{{/apiPackage}}{{importPath}}';
+{{/models}}{{#apiInfo}}{{#apis}}import {{namespace}}{{importPath}} from './{{#apiPackage}}{{.}}/{{/apiPackage}}{{importPath}}';
 {{/apis}}{{/apiInfo}}
 
 {{#emitJSDoc}}/**{{#projectDescription}}
@@ -39,10 +39,10 @@ import {{invokerPackage}}ApiClient from './ApiClient';
 export {
     {{=< >=}}
     <#emitJSDoc>/**
-     * The <invokerPackage>ApiClient constructor.
-     * @property {module:<#invokerPackage><invokerPackage>/</invokerPackage><invokerPackage>ApiClient}
+     * The <namespace>ApiClient constructor.
+     * @property {module:<#invokerPackage><invokerPackage>/</invokerPackage><namespace>ApiClient}
      */</emitJSDoc>
-    <invokerPackage>ApiClient<#models>,
+    <namespace>ApiClient<#models>,
 
     <#emitJSDoc>/**
      * The <importPath> model constructor.
@@ -51,8 +51,8 @@ export {
     <importPath></models><#apiInfo><#apis>,
 
     <#emitJSDoc>/**
-    * The <invokerPackage><importPath> service constructor.
-    * @property {module:<#invokerPackage><invokerPackage>/</invokerPackage><#apiPackage><apiPackage>/</apiPackage><invokerPackage><importPath>}
+    * The <namespace><importPath> service constructor.
+    * @property {module:<#invokerPackage><invokerPackage>/</invokerPackage><#apiPackage><apiPackage>/</apiPackage><namespace><importPath>}
     */</emitJSDoc>
-    <invokerPackage><importPath></apis></apiInfo>
+    <namespace><importPath></apis></apiInfo>
 };<={{ }}=>
