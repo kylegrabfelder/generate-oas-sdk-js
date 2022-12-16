@@ -11,3 +11,6 @@ files:
   package.mustache:
     templateType: SupportingFiles
     destinationFilename: package.json
+  tsconfig.mustache:
+    templateType: SupportingFiles
+    destinationFilename: tsconfig.json
