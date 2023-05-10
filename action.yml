@@ -1,4 +1,4 @@
-name: 'Generate and Publish an SDK from an Open API Specification - Javascript'
+name: 'Generate and Publish an SDK from an Open API Specification - Typescript'
 description: 'Parses the provided Open API Specification, generates a Javascript SDK, and publishes it to NPM'
 
 inputs:
