@@ -62,7 +62,7 @@ runs:
         generator: typescript-node
         openapi-file: sdk/schema.yaml
         config-file: sdk/generators/node/config.yaml
-        template-dir: sdk/generators/node/custom_templates
+        template-dir: sdk/generators/node/templates
         command-args: -o /github/workspace/sdk/ts-node --additional-properties="npmName=${{ inputs.package-scope }}/${{ inputs.package-name }}"
 
     - name: Build Node SDK
@@ -77,7 +77,7 @@ runs:
         generator: typescript-angular
         openapi-file: sdk/schema.yaml
         config-file: sdk/generators/angular/config.yaml
-        template-dir: sdk/generators/angular/custom_templates
+        template-dir: sdk/generators/angular/templates
         command-args: -o /github/workspace/sdk/ts-angular --additional-properties="npmName=${{ inputs.package-scope }}/${{ inputs.package-name }}"
 
     - name: Build Angular SDK
