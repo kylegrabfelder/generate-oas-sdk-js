@@ -63,7 +63,7 @@ runs:
         openapi-file: sdk/schema.yaml
         config-file: sdk/generators/node/config.yaml
         template-dir: sdk/generators/node/templates
-        command-args: -o /github/workspace/sdk/ts-node --additional-properties="npmName=${{ inputs.package-scope }}/${{ inputs.package-name }}"
+        command-args: -o /github/workspace/sdk/ts-node --additional-properties="npmName=${{ inputs.package-scope }}/${{ inputs.package-name }}-node"
 
     - name: Build Node SDK
       shell: bash
@@ -78,7 +78,7 @@ runs:
         openapi-file: sdk/schema.yaml
         config-file: sdk/generators/angular/config.yaml
         template-dir: sdk/generators/angular/templates
-        command-args: -o /github/workspace/sdk/ts-angular --additional-properties="npmName=${{ inputs.package-scope }}/${{ inputs.package-name }}"
+        command-args: -o /github/workspace/sdk/ts-angular --additional-properties="npmName=${{ inputs.package-scope }}/${{ inputs.package-name }}-angular"
 
     - name: Build Angular SDK
       shell: bash
@@ -118,6 +118,7 @@ runs:
           npm publish
           CURRENT_VERSION="1.0.0"
           cd ..
+          rm -rf initVersion
         else
           CURRENT_VERSION=$(cat currentVersion.txt)
         fi
@@ -202,6 +203,7 @@ runs:
           npm publish
           CURRENT_VERSION="1.0.0"
           cd ..
+          rm -rf initVersion
         else
           CURRENT_VERSION=$(cat currentVersion.txt)
         fi
