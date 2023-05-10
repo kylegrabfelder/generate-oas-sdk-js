@@ -55,6 +55,7 @@ runs:
         mkdir -p ${{ github.workspace }}/sdk
         cp -r generators ${{ github.workspace }}/sdk
         cat ${{ github.workspace }}/${{ inputs.openapi-path }} | yq '(.paths.[].[] | select(has("operationId")) | .tags) |= ["$NAMESPACE"]' > ${{ github.workspace }}/sdk/schema.yaml
+        cat ${{ github.workspace }}/sdk/schema.yaml
 
     - name: Generate Node SDK
       uses: openapi-generators/openapitools-generator-action@v1.3.0
