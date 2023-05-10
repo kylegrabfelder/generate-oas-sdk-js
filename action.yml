@@ -1,44 +1,433 @@
-name: 'Generate SDK from Open API Specification - Javascript'
-description: 'Parses the provided Open API Specification and generates a Javascript SDK'
+name: 'Generate and Publish an SDK from an Open API Specification - Javascript'
+description: 'Parses the provided Open API Specification, generates a Javascript SDK, and publishes it to NPM'
+
 inputs:
   openapi-path:
     description: 'Path to the Open API Specification'
     required: true
-  service-name:
-    description: 'Unique name of the service the SDK supports'
+  namespace:
+    description: 'Unique namespace for the service client'
     required: true
   package-name:
     description: 'NPM Package Name'
     required: true
   package-scope:
     description: 'NPM Package Scope'
+    default: "@tylertech"
+    required: false
+  production:
+    description: 'Flag to publish official releases'
+    required: false
+    default: false
+  npm-auth:
+    description: 'NPM Authorization Token to publish package versions'
     required: true
+  npm-registry:
+    description: 'NPM registry'
+    default: https://tylertech.jfrog.io/artifactory/api/npm/aurora-npm-local
+  access-token:
+    description: 'GitHub Personal Access Token to read from the main branch. Only used for prereleases (QA).'
+    required: false
+
+outputs:
+  prerelease-version:
+    description: Published prerelease package version
+    value: ${{ steps.publish-prerelease.outputs.NPM_VERSION }}
+  release-version:
+    description: Published release package version
+    value: ${{ steps.publish-release.outputs.NPM_VERSION }}
+
 runs:
   using: "composite"
-  steps:      
+  steps:
     - name: Copy Configuration to Workspace
       shell: bash
+      env:
+        NAMESPACE: ${{ inputs.namespace }}
       run: |
         cd ${{ github.action_path }}
         mkdir -p ${{ github.workspace }}/sdk
         cp -r custom_templates ${{ github.workspace }}/sdk
         cp config.yaml ${{ github.workspace }}/sdk
+        cat ${{ github.workspace }}/${{ inputs.openapi-path }} | yq '(.paths.[].[] | select(has("operationId")) | .tags) |= ["$NAMESPACE"]' > ${{ github.workspace }}/sdk/schema.yaml
 
-    - name: Generate SDK
+    - name: Generate Node SDK
       uses: openapi-generators/openapitools-generator-action@v1.3.0
       with:
-        generator: javascript
-        openapi-file: ${{ inputs.openapi-path }}
-        config-file: sdk/config.yaml
-        template-dir: sdk/custom_templates
-        command-args: -o /github/workspace/sdk/js --additional-properties="packageScope=${{ inputs.package-scope }},packageName=${{ inputs.package-name }},namespace=${{ inputs.service-name }}"
+        generator: typescript-node
+        openapi-file: sdk/schema.yaml
+        config-file: sdk/generators/node/config.yaml
+        template-dir: sdk/generators/node/custom_templates
+        command-args: -o /github/workspace/sdk/ts-node --additional-properties="npmName=${{ inputs.package-scope }}/${{ inputs.package-name }}"
 
-    - name: Build SDK
+    - name: Build Node SDK
       shell: bash
       run: |
-        cd sdk/js
+        cd sdk/ts-node
         npm install
 
-branding:
-  icon: activity
-  color: green
+    - name: Generate Angular SDK
+      uses: openapi-generators/openapitools-generator-action@v1.3.0
+      with:
+        generator: typescript-angular
+        openapi-file: sdk/schema.yaml
+        config-file: sdk/generators/angular/config.yaml
+        template-dir: sdk/generators/angular/custom_templates
+        command-args: -o /github/workspace/sdk/ts-angular --additional-properties="npmName=${{ inputs.package-scope }}/${{ inputs.package-name }}"
+
+    - name: Build Angular SDK
+      shell: bash
+      run: |
+        cd sdk/ts-angular
+        npm install
+
+    - uses: allenheltondev/detect-breaking-changes-action@v1
+      if: ${{ inputs.production != 'true' }}
+      id: breaking_change_detection
+      continue-on-error: true
+      with:
+        specFileName: ${{ inputs.openapi-path }}
+        accessToken: ${{ inputs.access-token }}
+        format: yaml
+
+    - name: Publish Node Prerelease
+      if: ${{ inputs.production != 'true' }}
+      id: publish-node-prerelease
+      shell: bash
+      env:
+        NPM_ARTIFACTORY_AUTH: ${{ inputs.npm-auth }}
+        CHANGE_STATUS: ${{ steps.breaking_change_detection.outcome }}
+      run: |
+        npm config set registry ${{ inputs.npm-registry }}
+        npm config set //tylertech.jfrog.io/artifactory/api/npm/:_auth="$NPM_ARTIFACTORY_AUTH"
+        PACKAGE_NAME="${{ inputs.package-scope }}/${{ inputs.package-name }}-node"
+
+        # Step 1.
+        # If a release has not been published, publish a placeholder initial release.
+        # Otherwise, get the latest release version.
+
+        FOUND_LATEST=0
+        npm show "$PACKAGE_NAME"@latest version > currentVersion.txt || FOUND_LATEST="$?"
+
+        if [ $FOUND_LATEST -ne 0 ]; then
+          mkdir initVersion
+          cd initVersion
+          PACKAGE_JSON=$( jq -n \
+            --arg n ""$PACKAGE_NAME"" \
+            --arg v "1.0.0" \
+            --arg d "Initial Release" \
+            --arg l "UNLICENSED" \
+            '{name: $n, version: $v, description: $d, license: $l}' )
+          echo $PACKAGE_JSON > package.json
+          npm publish
+          CURRENT_VERSION="1.0.0"
+          cd ..
+        else
+          CURRENT_VERSION=$(cat currentVersion.txt)
+        fi
+
+        # Step 2.
+        # Unpublish any previous releases from the current PR. 
+        # We only want one to exist so the PROD workflow can reference it once the PR is merged.
+
+        FOUND_VERSIONS=0
+        npm show "$PACKAGE_NAME" versions --json > versions.json || FOUND_VERSIONS="$?"
+
+        if [ $FOUND_VERSIONS -eq 0 ]; then
+          for f in $(jq '.[]' versions.json || jq '.' versions.json); do
+            if [[ "$f" == *"pr-${{ github.event.number }}"* ]]; then
+              EXISTING_VERSION=$(echo $f | jq -r)
+              npm unpublish "$PACKAGE_NAME"@"$EXISTING_VERSION"
+            fi
+          done
+        fi
+
+        # Step 3.
+        # Set the current release version on the package.json
+
+        cd sdk/js
+        jq -c '.version = $version' --arg version "$CURRENT_VERSION" package.json > tmp.json
+        mv tmp.json package.json
+
+        # Step 4.
+        # Generate a build id and publish a pre-release for this PR.
+        # A build id is appended because when you unpublish a version,
+        # you cannot re-publish a package with that version for 24 hours.
+
+        BUILD_ID=$(openssl rand -hex 16)
+
+        MAJOR_RELEASE=$(echo '${{ toJSON(github) }}' | jq -r '.head_ref | select(startswith("(MAJOR-RELEASE)"))')
+        if [[ "$MAJOR_RELEASE" != "" ]]; then
+          npm version premajor -preid="pr-${{ github.event.number }}-$BUILD_ID"
+        elif [[ "$CHANGE_STATUS" == "success" ]]; then
+          npm version prerelease -preid="pr-${{ github.event.number }}-$BUILD_ID"
+        else
+          npm version preminor -preid="pr-${{ github.event.number }}-$BUILD_ID"
+        fi
+        
+        # Step 5.
+        # Publish Prerelease
+        npm publish --tag "pr-${{ github.event.number }}"
+        
+        # Step 6.
+        # Output Prerelease Version
+        PR_RELEASE=$(jq -r '.version' package.json)
+        echo "NODE_NPM_VERSION=$PR_RELEASE" >> $GITHUB_OUTPUT
+
+    - name: Publish Angular Prerelease
+      if: ${{ inputs.production != 'true' }}
+      id: publish-angular-prerelease
+      shell: bash
+      env:
+        NPM_ARTIFACTORY_AUTH: ${{ inputs.npm-auth }}
+        CHANGE_STATUS: ${{ steps.breaking_change_detection.outcome }}
+      run: |
+        npm config set registry ${{ inputs.npm-registry }}
+        npm config set //tylertech.jfrog.io/artifactory/api/npm/:_auth="$NPM_ARTIFACTORY_AUTH"
+        PACKAGE_NAME="${{ inputs.package-scope }}/${{ inputs.package-name }}-angular"
+
+        # Step 1.
+        # If a release has not been published, publish a placeholder initial release.
+        # Otherwise, get the latest release version.
+
+        FOUND_LATEST=0
+        npm show "$PACKAGE_NAME"@latest version > currentVersion.txt || FOUND_LATEST="$?"
+
+        if [ $FOUND_LATEST -ne 0 ]; then
+          mkdir initVersion
+          cd initVersion
+          PACKAGE_JSON=$( jq -n \
+            --arg n ""$PACKAGE_NAME"" \
+            --arg v "1.0.0" \
+            --arg d "Initial Release" \
+            --arg l "UNLICENSED" \
+            '{name: $n, version: $v, description: $d, license: $l}' )
+          echo $PACKAGE_JSON > package.json
+          npm publish
+          CURRENT_VERSION="1.0.0"
+          cd ..
+        else
+          CURRENT_VERSION=$(cat currentVersion.txt)
+        fi
+
+        # Step 2.
+        # Unpublish any previous releases from the current PR. 
+        # We only want one to exist so the PROD workflow can reference it once the PR is merged.
+
+        FOUND_VERSIONS=0
+        npm show "$PACKAGE_NAME" versions --json > versions.json || FOUND_VERSIONS="$?"
+
+        if [ $FOUND_VERSIONS -eq 0 ]; then
+          for f in $(jq '.[]' versions.json || jq '.' versions.json); do
+            if [[ "$f" == *"pr-${{ github.event.number }}"* ]]; then
+              EXISTING_VERSION=$(echo $f | jq -r)
+              npm unpublish "$PACKAGE_NAME"@"$EXISTING_VERSION"
+            fi
+          done
+        fi
+
+        # Step 3.
+        # Set the current release version on the package.json
+
+        cd sdk/js
+        jq -c '.version = $version' --arg version "$CURRENT_VERSION" package.json > tmp.json
+        mv tmp.json package.json
+
+        # Step 4.
+        # Generate a build id and publish a pre-release for this PR.
+        # A build id is appended because when you unpublish a version,
+        # you cannot re-publish a package with that version for 24 hours.
+
+        BUILD_ID=$(openssl rand -hex 16)
+
+        MAJOR_RELEASE=$(echo '${{ toJSON(github) }}' | jq -r '.head_ref | select(startswith("(MAJOR-RELEASE)"))')
+        if [[ "$MAJOR_RELEASE" != "" ]]; then
+          npm version premajor -preid="pr-${{ github.event.number }}-$BUILD_ID"
+        elif [[ "$CHANGE_STATUS" == "success" ]]; then
+          npm version prerelease -preid="pr-${{ github.event.number }}-$BUILD_ID"
+        else
+          npm version preminor -preid="pr-${{ github.event.number }}-$BUILD_ID"
+        fi
+        
+        # Step 5.
+        # Publish Prerelease
+        npm publish --tag "pr-${{ github.event.number }}"
+        
+        # Step 6.
+        # Output Prerelease Version
+        PR_RELEASE=$(jq -r '.version' package.json)
+        echo "NODE_NPM_VERSION=$PR_RELEASE" >> $GITHUB_OUTPUT
+
+    - name: Publish Node Release
+      id: publish-node-release
+      if: ${{ inputs.production == 'true' }}
+      env:
+        NPM_ARTIFACTORY_AUTH: ${{ inputs.npm-auth }}
+      shell: bash
+      run: |
+        npm config set registry ${{ inputs.npm-registry }}
+        npm config set //tylertech.jfrog.io/artifactory/api/npm/:_auth="$NPM_ARTIFACTORY_AUTH"
+        PACKAGE_NAME="${{ inputs.package-scope }}/${{ inputs.package-name }}-node"
+
+        # Step 1.
+        # Get the PR number from the commit history
+        JQ_INPUT=$(echo '[.event.commits[] | select(.message|test("^Merge pull request #\\d+ from *"))]' \
+                        '| sort_by(.timestamp) | reverse' \
+                        '| first | .message' \
+                        '| capture("^Merge pull request #(?<prNum>[[:digit:]]+) from").prNum')
+        PR_NUMBER=$(echo '${{ toJSON(github) }}' | jq "$JQ_INPUT" -r)
+
+        # Step 2.
+        # Get PR prerelease version
+        npm show "$PACKAGE_NAME" versions --json > versions.json
+
+        for f in $(jq '.[]' versions.json || jq '.' versions.json); do
+          if [[ "$f" == *"pr-$PR_NUMBER"* ]]; then
+            if [[ -z ${PR_VERSION} ]]; then
+              PR_VERSION=$(echo $f | jq -r)
+            else
+              echo "More than 1 prerelease exists for the merged PR. Exiting..."
+              exit 1
+            fi
+          fi
+        done
+
+        if [[ -z "${PR_VERSION}" ]]; then
+          echo "Unable to find a prerelease for the merged PR. Exiting..."
+          exit 1
+        fi
+
+        # Step 3.
+        # Get latest release version and validate release candidate
+        LATEST_RELEASE=$(npm show "$PACKAGE_NAME"@latest version)
+        LATEST_RELEASE_PARTS=(${LATEST_RELEASE//./ })
+
+        echo "Latest Release"
+        echo $LATEST_RELEASE
+
+        PR_RELEASE=(${PR_VERSION//-pr/ }[0])
+        PR_RELEASE_PARTS=(${PR_RELEASE//./ })
+
+        echo "PR Release"
+        echo $PR_RELEASE
+
+        LATEST_MAJOR=${LATEST_RELEASE_PARTS[0]}
+        PR_MAJOR=${PR_RELEASE_PARTS[0]}
+
+        LATEST_MINOR=${LATEST_RELEASE_PARTS[1]}
+        PR_MINOR=${PR_RELEASE_PARTS[1]}
+
+        LATEST_PATCH=${LATEST_RELEASE_PARTS[2]}
+        PR_PATCH=${PR_RELEASE_PARTS[2]}
+
+        if [[ $PR_PATCH -eq 0 && $PR_MINOR -eq 0 && $(($LATEST_MAJOR + 1)) -eq $PR_MAJOR ]]; then
+          echo "Updating major version."
+        elif [[ $PR_PATCH -eq 0 && $(($LATEST_MINOR + 1)) -eq $PR_MINOR && $LATEST_MAJOR -eq $PR_MAJOR ]]; then
+          echo "Updating minor version."
+        elif [[ $(($LATEST_PATCH + 1)) -eq $PR_PATCH && $LATEST_MINOR -eq $PR_MINOR && $LATEST_MAJOR -eq $PR_MAJOR ]]; then
+          echo "Updating patch version."
+        else
+          echo "Invalid Version Update. Exiting..."
+          exit 1
+        fi
+
+        # Step 4.
+        # Set pull-request version on the package.json
+        cd sdk/js
+        jq -c '.version = $version' --arg version "$PR_RELEASE" package.json > tmp.json
+        mv tmp.json package.json
+
+        # Step 5.
+        # Publish new release
+        npm publish
+        
+        # Step 6.
+        # Output Release Version
+        echo "ANGULAR_NPM_VERSION=$PR_RELEASE" >> $GITHUB_OUTPUT
+
+    - name: Publish Angular Release
+      id: publish-angular-release
+      if: ${{ inputs.production == 'true' }}
+      env:
+        NPM_ARTIFACTORY_AUTH: ${{ inputs.npm-auth }}
+      shell: bash
+      run: |
+        npm config set registry ${{ inputs.npm-registry }}
+        npm config set //tylertech.jfrog.io/artifactory/api/npm/:_auth="$NPM_ARTIFACTORY_AUTH"
+        PACKAGE_NAME="${{ inputs.package-scope }}/${{ inputs.package-name }}-angular"
+
+        # Step 1.
+        # Get the PR number from the commit history
+        JQ_INPUT=$(echo '[.event.commits[] | select(.message|test("^Merge pull request #\\d+ from *"))]' \
+                        '| sort_by(.timestamp) | reverse' \
+                        '| first | .message' \
+                        '| capture("^Merge pull request #(?<prNum>[[:digit:]]+) from").prNum')
+        PR_NUMBER=$(echo '${{ toJSON(github) }}' | jq "$JQ_INPUT" -r)
+
+        # Step 2.
+        # Get PR prerelease version
+        npm show "$PACKAGE_NAME" versions --json > versions.json
+
+        for f in $(jq '.[]' versions.json || jq '.' versions.json); do
+          if [[ "$f" == *"pr-$PR_NUMBER"* ]]; then
+            if [[ -z ${PR_VERSION} ]]; then
+              PR_VERSION=$(echo $f | jq -r)
+            else
+              echo "More than 1 prerelease exists for the merged PR. Exiting..."
+              exit 1
+            fi
+          fi
+        done
+
+        if [[ -z "${PR_VERSION}" ]]; then
+          echo "Unable to find a prerelease for the merged PR. Exiting..."
+          exit 1
+        fi
+
+        # Step 3.
+        # Get latest release version and validate release candidate
+        LATEST_RELEASE=$(npm show "$PACKAGE_NAME"@latest version)
+        LATEST_RELEASE_PARTS=(${LATEST_RELEASE//./ })
+
+        echo "Latest Release"
+        echo $LATEST_RELEASE
+
+        PR_RELEASE=(${PR_VERSION//-pr/ }[0])
+        PR_RELEASE_PARTS=(${PR_RELEASE//./ })
+
+        echo "PR Release"
+        echo $PR_RELEASE
+
+        LATEST_MAJOR=${LATEST_RELEASE_PARTS[0]}
+        PR_MAJOR=${PR_RELEASE_PARTS[0]}
+
+        LATEST_MINOR=${LATEST_RELEASE_PARTS[1]}
+        PR_MINOR=${PR_RELEASE_PARTS[1]}
+
+        LATEST_PATCH=${LATEST_RELEASE_PARTS[2]}
+        PR_PATCH=${PR_RELEASE_PARTS[2]}
+
+        if [[ $PR_PATCH -eq 0 && $PR_MINOR -eq 0 && $(($LATEST_MAJOR + 1)) -eq $PR_MAJOR ]]; then
+          echo "Updating major version."
+        elif [[ $PR_PATCH -eq 0 && $(($LATEST_MINOR + 1)) -eq $PR_MINOR && $LATEST_MAJOR -eq $PR_MAJOR ]]; then
+          echo "Updating minor version."
+        elif [[ $(($LATEST_PATCH + 1)) -eq $PR_PATCH && $LATEST_MINOR -eq $PR_MINOR && $LATEST_MAJOR -eq $PR_MAJOR ]]; then
+          echo "Updating patch version."
+        else
+          echo "Invalid Version Update. Exiting..."
+          exit 1
+        fi
+
+        # Step 4.
+        # Set pull-request version on the package.json
+        cd sdk/js
+        jq -c '.version = $version' --arg version "$PR_RELEASE" package.json > tmp.json
+        mv tmp.json package.json
+
+        # Step 5.
+        # Publish new release
+        npm publish
+        
+        # Step 6.
+        # Output Release Version
+        echo "ANGULAR_NPM_VERSION=$PR_RELEASE" >> $GITHUB_OUTPUT

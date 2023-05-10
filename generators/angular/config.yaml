@@ -1,0 +1,6 @@
+files:
+  api.service.mustache:
+    destinationFilename: .ts
+  package.mustache:
+    templateType: SupportingFiles
+    destinationFilename: package.json
