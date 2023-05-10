@@ -141,7 +141,7 @@ runs:
         # Step 3.
         # Set the current release version on the package.json
 
-        cd sdk/js
+        cd sdk/ts-node
         jq -c '.version = $version' --arg version "$CURRENT_VERSION" package.json > tmp.json
         mv tmp.json package.json
 
@@ -225,7 +225,7 @@ runs:
         # Step 3.
         # Set the current release version on the package.json
 
-        cd sdk/js
+        cd sdk/ts-angular/dist
         jq -c '.version = $version' --arg version "$CURRENT_VERSION" package.json > tmp.json
         mv tmp.json package.json
 
@@ -329,7 +329,7 @@ runs:
 
         # Step 4.
         # Set pull-request version on the package.json
-        cd sdk/js
+        cd sdk/ts-node
         jq -c '.version = $version' --arg version "$PR_RELEASE" package.json > tmp.json
         mv tmp.json package.json
 
@@ -416,7 +416,7 @@ runs:
 
         # Step 4.
         # Set pull-request version on the package.json
-        cd sdk/js
+        cd sdk/ts-angular/dist
         jq -c '.version = $version' --arg version "$PR_RELEASE" package.json > tmp.json
         mv tmp.json package.json
 
