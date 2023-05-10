@@ -30,12 +30,18 @@ inputs:
     required: false
 
 outputs:
-  prerelease-version:
-    description: Published prerelease package version
-    value: ${{ steps.publish-prerelease.outputs.NPM_VERSION }}
-  release-version:
-    description: Published release package version
-    value: ${{ steps.publish-release.outputs.NPM_VERSION }}
+  node-prerelease-version:
+    description: Published node prerelease package version
+    value: ${{ steps.publish-prerelease.outputs.NODE_NPM_VERSION }}
+  node-release-version:
+    description: Published node release package version
+    value: ${{ steps.publish-release.outputs.NODE_NPM_VERSION }}
+  angular-prerelease-version:
+    description: Published angular prerelease package version
+    value: ${{ steps.publish-prerelease.outputs.ANGULAR_NPM_VERSION }}
+  angular-release-version:
+    description: Published angular release package version
+    value: ${{ steps.publish-release.outputs.ANGULAR_NPM_VERSION }}
 
 runs:
   using: "composite"
